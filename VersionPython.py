@@ -152,7 +152,7 @@ def dp_solver(instance: Instance) -> Solution:
 
 
 
-# Supón que tienes las clases Instance, Solution y los métodos brute_force_solver, backtracking_solver, dp_solver definidos
+# clases Instance, Solution y los métodos brute_force_solver, backtracking_solver, dp_solver definidos
 
 # Carga la instancia (puedes adaptar esto según tu clase)
 instance = Instance()

@@ -1,5 +1,5 @@
-#ifndef BACKTRACKING_SOLVER_H
-#define BACKTRACKING_SOLVER_H
+#ifndef OG_BACKTRACKING_SOLVER_H
+#define OG_BACKTRACKING_SOLVER_H
 
 #include "Instance.h"
 #include "Solution.h"

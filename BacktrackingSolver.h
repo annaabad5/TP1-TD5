@@ -51,3 +51,5 @@ private:
     //Para qué sirve: recorre el espacio de soluciones pero usando las dos podas:
     //Optimalidad: si el costo parcial >= mejor costo -> corto.
     //Factibilidad: si la unión de lo que queda no alcanza para cubrir -> corto.
+
+    #endif // BACKTRACKING_SOLVER_H

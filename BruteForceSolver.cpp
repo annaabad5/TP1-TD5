@@ -2,6 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include <vector>
+#include <set>
 
 BruteForceSolver::BruteForceSolver() {}
 
@@ -29,7 +30,7 @@ Solution BruteForceSolver::solve(const Instance& instance) {
         }
 
         // Chequea si todos los segmentos están cubiertos
-        if (coveredSegments.size() == N) {
+        if (coveredSegments.size() == static_cast<size_t>(N)) {
             if (minCost == -10 || totalCost < minCost) {
                 minCost = totalCost;
                 mejores = selectedInfluencers;

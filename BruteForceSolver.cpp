@@ -1,53 +1,49 @@
 #include "BruteForceSolver.h"
-#include <iostream>
-#include <algorithm>
+#include <limits>
 #include <vector>
-#include <set>
 
 BruteForceSolver::BruteForceSolver() {}
 
-Solution BruteForceSolver::solve(const Instance& instance) {
-    int N = instance.getNumSegments();
-    int M = instance.getNumInfluencers();
-
-    int minCost = -10;
-    std::vector<int> mejores;
-
-    for (int mask = 0; mask < (1 << M); ++mask) {
-        int totalCost = 0;
-        std::set<int> coveredSegments;
-        std::vector<int> selectedInfluencers;
-
-        for (int i = 0; i < M; ++i) {
-            if (mask & (1 << i)) { // Si el influencer i está seleccionado:
-                
-                totalCost += instance.getInfluencerCost(i);
-                const std::vector<int>& segmentos = instance.getInfluencerSegments(i);
-                coveredSegments.insert(segmentos.begin(), segmentos.end());
-                selectedInfluencers.push_back(i);
-
-            }
-        }
-
-        // Chequea si todos los segmentos están cubiertos
-        if (coveredSegments.size() == static_cast<size_t>(N)) {
-            if (minCost == -10 || totalCost < minCost) {
-                minCost = totalCost;
-                mejores = selectedInfluencers;
+static bool cubreTodos(const std::vector<int>& usados, const Instance& inst, int N) {
+    std::vector<char> covered(N, 0);
+    int cnt = 0;
+    for (int inf : usados) {
+        const auto& segs = inst.getInfluencerSegments(inf);
+        for (int s : segs) {
+            int idx = (s >= 1 && s <= N) ? s - 1 : s; // normaliza 1..N → 0..N-1
+            if (0 <= idx && idx < N && !covered[idx]) {
+                covered[idx] = 1;
+                if (++cnt == N) return true;
             }
         }
     }
-
-    
-    Solution bestSolution(M); 
-    if (minCost != -10) {
-        bestSolution.setCost(minCost);
-        bestSolution.setSelectedInfluencers(mejores);
-    } else {
-
-        bestSolution.setCost(-1);
-        bestSolution.setSelectedInfluencers({});
-    }
-    return bestSolution;
+    return cnt == N;
 }
 
+Solution BruteForceSolver::solve(const Instance& inst) {
+    const int N = inst.getNumSegments();
+    const int M = inst.getNumInfluencers();
+
+    int bestCost = std::numeric_limits<int>::max();
+    std::vector<int> best;
+
+    for (int mask = 1; mask < (1 << M); ++mask) { // ← empieza en 1 (evita vacío)
+        int cost = 0;
+        std::vector<int> pick;
+        pick.reserve(M);
+        for (int i = 0; i < M; ++i) if (mask & (1 << i)) {
+            cost += inst.getInfluencerCost(i);
+            if (cost >= bestCost) { pick.clear(); break; } // poda simple
+            pick.push_back(i);
+        }
+        if (pick.empty()) continue;
+        if (cubreTodos(pick, inst, N) && cost < bestCost) {
+            bestCost = cost; best = std::move(pick);
+        }
+    }
+
+    Solution sol(M);
+    if (best.empty()) { sol.setCost(-1); sol.setSelectedInfluencers({}); }
+    else { sol.setCost(bestCost); sol.setSelectedInfluencers(best); }
+    return sol;
+}

@@ -4,7 +4,6 @@
 #include "Solution.h"
 #include "BruteForceSolver.h"
 #include "BacktrackingSolver.h"
-#include "DynamicProgrammingSolver.h"
 #include <vector>
 
 int main(int argc, char* argv[]) {
@@ -29,21 +28,24 @@ int main(int argc, char* argv[]) {
     if (algorithm == "fb") {
         BruteForceSolver bruteForceSolver;
         Solution bruteForceSolution = bruteForceSolver.solve(instance);
+        auto start = std::chrono::high_resolution_clock::now();
+        auto end = std::chrono::high_resolution_clock::now();
+        auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         std::cout << "Solucion de Fuerza Bruta:" << std::endl;
+        std::cout << "TIME=" << dur << "ms" << std::endl;
         bruteForceSolution.printSolution();
     }
     else if (algorithm == "bt") {
         BacktrackingSolver backtrackingSolver;
         Solution backtrackingSolution = backtrackingSolver.solve(instance);
+        auto start = std::chrono::high_resolution_clock::now();
+        auto end = std::chrono::high_resolution_clock::now();
+        auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         std::cout << "Solucion de Backtracking:" << std::endl;
         backtrackingSolution.printSolution();
+        std::cout << "TIME=" << dur << "ms" << std::endl;
         std::cout << "NODES=" << backtrackingSolver.getNodesExplored() << std::endl;
-    } 
-    else if (algorithm == "dp") {               
-        DynamicProgrammingSolver dynamicProgrammingsolver;
-        Solution dynamicProgrammingSolution = dynamicProgrammingsolver.solve(instance);
-        std::cout << "Solucion de Programacion Dinamica:\n";
-        dynamicProgrammingSolution.printSolution(); 
+        
     } else {
         std::cerr << "Algoritmo no reconocido (use fb | bt | dp)\n";
         return 2;

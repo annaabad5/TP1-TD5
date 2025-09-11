@@ -1,120 +1,98 @@
 #include "BacktrackingSolver.h"
-#include <iostream>
-#include <algorithm>
-#include <climits>
+#include <vector>
 #include <limits>
 
-std::vector<int> BacktrackingSolver::buildOrder(const Instance& inst) const {
-    std::vector<int> order(M_);
-    for (int i = 0; i < M_; ++i) {
-        order[i] = i;
-    }
+BacktrackingSolver::BacktrackingSolver() = default;
 
-    std::sort(order.begin(), order.end(), [&](int a, int b) {
-        // ordenar por costo/segmento ascendente (con tie-breaks simples)
-        int ca = inst.getInfluencerCost(a);
-        int cb = inst.getInfluencerCost(b);
-        int sa = std::max(1, (int)inst.getInfluencerSegments(a).size());
-        int sb = std::max(1, (int)inst.getInfluencerSegments(b).size());
-        long long lhs = 1LL * ca * sb;
-        long long rhs = 1LL * cb * sa;
-        if (lhs != rhs) 
-            return lhs < rhs;
-        if (sa != sb)   
-            return sa > sb;   // más cobertura primero
-        return ca < cb;                    // más barato primero
-    });
-    return order;
+// Normaliza un ID de segmento a [0..N-1]. Si viene 1..N, convierte a 0..N-1.
+static inline int normSeg(int s, int N) {
+    if (0 <= s && s < N) return s;         // 0-based ya ok
+    if (1 <= s && s <= N) return s - 1;    // 1-based → 0-based
+    return -1;                              // fuera de rango
 }
 
-std::vector<std::vector<bool>>
-BacktrackingSolver::buildSuffixUnion(const Instance& inst, const std::vector<int>& order) const {
-    std::vector<std::vector<bool>> suf(M_ + 1, std::vector<bool>(N_ + 1, false));
-    for (int k = M_ - 1; k >= 0; --k) {
-        suf[k] = suf[k + 1];
-        for (int s : inst.getInfluencerSegments(order[k])) {
-            if (1 <= s && s <= N_) suf[k][s] = true;
+// Poda de factibilidad: ¿los faltantes se pueden cubrir con algún j>=idx?
+static bool canStillCoverAllMissing(const Instance& inst,
+                                    int idx, int N, int M,
+                                    const std::vector<char>& covered) {
+    // Pre–compute “qué segmentos puede cubrir el resto”
+    std::vector<char> canCover(N, 0);
+    for (int j = idx; j < M; ++j) {
+        const auto& segs = inst.getInfluencerSegments(j);
+        for (int s : segs) {
+            int t = normSeg(s, N);
+            if (t >= 0) canCover[t] = 1;
         }
     }
-    return suf;
+    for (int t = 0; t < N; ++t) {
+        if (!covered[t] && !canCover[t]) return false;
+    }
+    return true;
 }
 
-void BacktrackingSolver::dfs(const Instance& inst,
-                             const std::vector<int>& order,
-                             const std::vector<std::vector<bool>>& sufUnion,
-                             int idx,
-                             int cost,
-                             const std::vector<bool>& covered,
-                             int coveredCount,
-                             std::vector<int>& curSel) {
-    // aumento 1 para los nodos
-    nodesExplored_++;
-    
-    // poda por optimalidad
-    if (cost >= bestCost_) 
-        return;
+static void bt(const Instance& inst,
+               int i, int N, int M,
+               std::vector<char>& covered, int& coveredCnt,
+               int currCost, int& bestCost,
+               std::vector<int>& pick, std::vector<int>& best,
+               int& nodesExplored)
+{
+    ++nodesExplored;
 
-    // solución completa
-    if (coveredCount == N_) {
-        bestCost_ = cost;
-        bestSel_  = curSel;
-        return;
-    }
-
-    // sin más influencers
-    if (idx == M_) 
-        return;
-
-    // poda por factibilidad: si algún segmento faltante no está en la unión de lo que queda, corto
-    for (int s = 1; s <= N_; ++s) {
-        if (!covered[s] && !sufUnion[idx][s]) 
-            return;
-    }
-
-    // 1) incluir influencer order[idx]
-    {
-        int i = order[idx];
-        std::vector<bool> covInc = covered;  // copia simple para legibilidad
-        int added = 0;
-        for (int s : inst.getInfluencerSegments(i)) {
-            if (1 <= s && s <= N_ && !covInc[s]) { 
-                covInc[s] = true; 
-                ++added; 
-            }
+    // Completo: todos cubiertos
+    if (coveredCnt == N) {
+        if (currCost < bestCost) {
+            bestCost = currCost;
+            best = pick;
         }
-        curSel.push_back(i);
-        dfs(inst, order, sufUnion, idx + 1, cost + inst.getInfluencerCost(i), covInc, coveredCount + added, curSel);
-        curSel.pop_back();
+        return;
     }
+    // Sin más influencers o ya peor que el mejor
+    if (i == M || currCost >= bestCost) return;
 
-    // 2) NO incluir influencer order[idx]
-    dfs(inst, order, sufUnion, idx + 1, cost, covered, coveredCount, curSel);
+    // Poda de factibilidad
+    if (!canStillCoverAllMissing(inst, i, N, M, covered)) return;
+
+    // Opción A: NO tomar i
+    bt(inst, i + 1, N, M, covered, coveredCnt, currCost, bestCost, pick, best, nodesExplored);
+
+    // Opción B: tomar i
+    const auto& segs = inst.getInfluencerSegments(i);
+    std::vector<int> touched;
+    touched.reserve(segs.size());
+    for (int s : segs) {
+        int t = normSeg(s, N);
+        if (t >= 0 && !covered[t]) {
+            covered[t] = 1; touched.push_back(t); ++coveredCnt;
+        }
+    }
+    pick.push_back(i);
+    bt(inst, i + 1, N, M, covered, coveredCnt,
+       currCost + inst.getInfluencerCost(i),
+       bestCost, pick, best, nodesExplored);
+    pick.pop_back();
+    for (int t : touched) { covered[t] = 0; --coveredCnt; }
 }
 
-Solution BacktrackingSolver::solve(const Instance& instance) {
-    N_ = instance.getNumSegments();
-    M_ = instance.getNumInfluencers();
+Solution BacktrackingSolver::solve(const Instance& inst) {
+    const int N = inst.getNumSegments();
+    const int M = inst.getNumInfluencers();
 
-    bestCost_ = std::numeric_limits<int>::max();
-    bestSel_.clear();
-    
+    int bestCost = std::numeric_limits<int>::max();
+    std::vector<int> best, pick;
+    std::vector<char> covered(N, 0);
+    int coveredCnt = 0;
     nodesExplored_ = 0;
 
-    auto order    = buildOrder(instance);
-    auto sufUnion = buildSuffixUnion(instance, order);
+    bt(inst, 0, N, M, covered, coveredCnt, 0, bestCost, pick, best, nodesExplored_);
 
-    std::vector<bool> covered(N_ + 1, false);
-    std::vector<int> curSel;
-    dfs(instance, order, sufUnion, /*idx=*/0, /*cost=*/0, covered, /*coveredCount=*/0, curSel);
-
-    Solution out(M_);
-    if (bestCost_ < std::numeric_limits<int>::max()) {
-        out.setCost(bestCost_);
-        out.setSelectedInfluencers(bestSel_);
+    Solution sol(M);
+    if (bestCost == std::numeric_limits<int>::max()) {
+        sol.setCost(-1);                  // INFACTIBLE → -1, no 0 ni INT_MAX
+        sol.setSelectedInfluencers({});
     } else {
-        out.setCost(std::numeric_limits<int>::max()); // INFEASIBLE
-        out.setSelectedInfluencers({});
+        sol.setCost(bestCost);
+        sol.setSelectedInfluencers(best);
     }
-    return out;
+    return sol;
 }
-

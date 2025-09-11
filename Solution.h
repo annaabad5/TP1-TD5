@@ -21,6 +21,9 @@ public:
 
     int getCost() const { return cost; }
     const std::vector<int>& getSelectedInfluencers() const { return selectedInfluencers; }
+    
+    void setChosen(const std::vector<int>& v) { selectedInfluencers = v; }
+    const std::vector<int>& getChosen() const { return selectedInfluencers; }
 };
 
 #endif // SOLUTION_H

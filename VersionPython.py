@@ -156,7 +156,7 @@ def dp_solver(instance: Instance) -> Solution:
 
 # Carga la instancia (puedes adaptar esto según tu clase)
 instance = Instance()
-instance.load_from_file("selected_instances/instancia1.txt")  // PONER NOMBRE DE INSTANCIA!!
+instance.load_from_file("selected_instances/ninstance_305.txt")  
 
 # Fuerza Bruta
 start = time.time()

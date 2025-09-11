@@ -12,11 +12,16 @@ public:
     BacktrackingSolver() = default;
     Solution solve(const Instance& instance);
 
+    //Para obtener los nodos
+    inline int getNodesExplored() const { return nodesExplored_; }
+
 private:
     // Estado global simple
     int N_ = 0, M_ = 0;
     int bestCost_ = 0;
     std::vector<int> bestSel_;
+
+    int nodesExplored_ = 0;
 
     // Utilidades
     std::vector<int> buildOrder(const Instance& inst) const; // heurística costo/#segs.
@@ -32,7 +37,7 @@ private:
     //de todos los segmentos que pueden cubrirse con los influencers desde order[k] hasta el final.                                                 
     //es la base de la poda por factibilidad: Si en un estado faltan segmentos y ni siquiera 
     //la unión de lo que queda puede cubrirlos -> corto esa rama.
-
+        
 
 
     // DFS con podas

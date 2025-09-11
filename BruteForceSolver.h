@@ -9,10 +9,7 @@ private:
 
 public:
     BruteForceSolver();
-    Solution solve(const Instance& instance);
-    
-    
-    
+    Solution solve(const Instance& instance);   
 };
 
 #endif // BRUTEFORCE_SOLVER_H

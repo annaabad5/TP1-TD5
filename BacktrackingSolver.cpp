@@ -47,6 +47,9 @@ void BacktrackingSolver::dfs(const Instance& inst,
                              const std::vector<bool>& covered,
                              int coveredCount,
                              std::vector<int>& curSel) {
+    // aumento 1 para los nodos
+    nodesExplored_++;
+    
     // poda por optimalidad
     if (cost >= bestCost_) 
         return;
@@ -94,6 +97,8 @@ Solution BacktrackingSolver::solve(const Instance& instance) {
 
     bestCost_ = std::numeric_limits<int>::max();
     bestSel_.clear();
+    
+    nodesExplored_ = 0;
 
     auto order    = buildOrder(instance);
     auto sufUnion = buildSuffixUnion(instance, order);

@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <climits>
 #include "Instance.h"
 #include "Solution.h"
 #include "BruteForceSolver.h"
@@ -9,12 +10,14 @@
 int main(int argc, char* argv[]) {
 
     if (argc < 3) {
-        std::cout << "Uso: " << argv[0] << " <instancia> <algoritmo>" << std::endl;
-        std::cout << "Algoritmo: fb para Fuerza Bruta, bt para Backtracking, dp para Programacion Dinamica" << std::endl;
+        std::cout << "Uso: " << argv[0] << " <instancia> <algoritmo> [variante] [K]" << std::endl;
+        std::cout << "Algoritmo: fb (Fuerza Bruta) o bt (Backtracking)" << std::endl;
+        std::cout << "Variante opcional: todos | micro | macro" << std::endl;
+        std::cout << "K opcional: umbral para separar micro/macro" << std::endl;
         return 1;
     }
 
-    std::string filename = "selected_instances/" + std::string(argv[1]) + ".txt";
+    std::string filename = "selected_instances/" + std::string(argv[1]);
     // Load instance
     Instance instance;
     if (!instance.loadFromFile(filename)) {
@@ -23,32 +26,49 @@ int main(int argc, char* argv[]) {
     }
     std::cout << "=== Instancia cargada correctamente ===" << std::endl;
 
+    // Parsear argumentos 
     std::string algorithm = argv[2];
+    std::string variant = (argc >= 4) ? std::string(argv[3]) : "todos";
+    int K = (argc >= 5) ? std::stoi(argv[4]) : -1;
+
+    // Aplicar división micro/macro 
+    if (variant == "micro" || variant == "macro") {
+        if (K <= 0) {
+            std::cerr << "Error: se requiere un valor de K positivo para las variantes micro/macro." << std::endl;
+            return 1;
+        }
+
+        #include <utility>  // arriba, por las dudas
+        auto [micro, macro] = instance.splitBySegmentCount(K);  // devuelve par
+
+
+        if (variant == "micro") {
+            instance = micro;
+            std::cout << "[Modo MICRO] Influencers con |S_i| < " << K << std::endl;
+        } else if (variant == "macro") {
+            instance = macro;
+            std::cout << "[Modo MACRO] Influencers con |S_i| >= " << K << std::endl;
+        }
+    } else {
+        std::cout << "[Modo TODOS] Se consideran todos los influencers." << std::endl;
+    }
 
     if (algorithm == "fb") {
         BruteForceSolver bruteForceSolver;
         Solution bruteForceSolution = bruteForceSolver.solve(instance);
-        auto start = std::chrono::high_resolution_clock::now();
-        auto end = std::chrono::high_resolution_clock::now();
-        auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
         std::cout << "Solucion de Fuerza Bruta:" << std::endl;
-        std::cout << "TIME=" << dur << "ms" << std::endl;
         bruteForceSolution.printSolution();
     }
-    else if (algorithm == "bt") {
+    
+    if (algorithm == "bt") {
         BacktrackingSolver backtrackingSolver;
-        Solution backtrackingSolution = backtrackingSolver.solve(instance);
-        auto start = std::chrono::high_resolution_clock::now();
-        auto end = std::chrono::high_resolution_clock::now();
-        auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        Solution sol_parcial;
+        sol_parcial.initCover(instance.getNumSegments());
+        Solution bestSolution;
+        bestSolution.setCost(INT_MAX);
+        Solution backtrackingSolution = backtrackingSolver.solve(instance, sol_parcial, 0, bestSolution);
         std::cout << "Solucion de Backtracking:" << std::endl;
         backtrackingSolution.printSolution();
-        std::cout << "TIME=" << dur << "ms" << std::endl;
-        std::cout << "NODES=" << backtrackingSolver.getNodesExplored() << std::endl;
-        
-    } else {
-        std::cerr << "Algoritmo no reconocido (use fb | bt | dp)\n";
-        return 2;
     }
     
     return 0;

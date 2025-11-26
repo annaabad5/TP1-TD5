@@ -1,98 +1,49 @@
 #include "BacktrackingSolver.h"
-#include <vector>
-#include <limits>
+#include <iostream>
+#include <algorithm>
+#include <climits>
 
-BacktrackingSolver::BacktrackingSolver() = default;
+BacktrackingSolver::BacktrackingSolver() {}
 
-// Normaliza un ID de segmento a [0..N-1]. Si viene 1..N, convierte a 0..N-1.
-static inline int normSeg(int s, int N) {
-    if (0 <= s && s < N) return s;         // 0-based ya ok
-    if (1 <= s && s <= N) return s - 1;    // 1-based → 0-based
-    return -1;                              // fuera de rango
-}
+Solution BacktrackingSolver::solve(const Instance& instance, Solution& sol_parcial, int i, Solution& bestSolution) {
+    int bestCost = bestSolution.getCost(); //busco el costo total de la mejor solucion hasta ahora
 
-// Poda de factibilidad: ¿los faltantes se pueden cubrir con algún j>=idx?
-static bool canStillCoverAllMissing(const Instance& inst,
-                                    int idx, int N, int M,
-                                    const std::vector<char>& covered) {
-    // Pre–compute “qué segmentos puede cubrir el resto”
-    std::vector<char> canCover(N, 0);
-    for (int j = idx; j < M; ++j) {
-        const auto& segs = inst.getInfluencerSegments(j);
-        for (int s : segs) {
-            int t = normSeg(s, N);
-            if (t >= 0) canCover[t] = 1;
+    //Caso base
+    if (i == instance.getNumInfluencers()) { //recorrí todos los influencers
+        if (sol_parcial.getCoveredCount() == instance.getNumSegments() && sol_parcial.InfluencerSize() > 0) {
+            return sol_parcial;
+        } else { //esa rama no sirve
+            Solution vacia = Solution();
+            vacia.setCost(INT_MAX); //seteo costo infinito a rama a descartar pues infinito nunca será minimo
+            return vacia;
         }
+
+    //podas:
+    }else if((sol_parcial.getCost() >= bestCost)){ //Optimalidad: si esta sol tiene MAYOR costo total que la mejor solución vista hasta ahora corto
+        return bestSolution; //bestSolution sigue siendo la mejor hasta ahora
+    }else if (sol_parcial.getCoveredCount() == instance.getNumSegments()){ //Factibilidad: si ya cubrí los N segmentos corto esta rama
+        return sol_parcial;
     }
-    for (int t = 0; t < N; ++t) {
-        if (!covered[t] && !canCover[t]) return false;
+    
+    //Caso recursivo
+    int costoInfluencer = instance.getInfluencerCost(i);
+    const std::vector<int>& segments = instance.getInfluencerSegments(i);
+    
+    // Opción 1: SIN incluir el influencer
+    Solution without = solve(instance, sol_parcial, i+1, bestSolution);
+    if (without.getCost() < bestSolution.getCost()){
+        bestSolution = without;
     }
-    return true;
-}
-
-static void bt(const Instance& inst,
-               int i, int N, int M,
-               std::vector<char>& covered, int& coveredCnt,
-               int currCost, int& bestCost,
-               std::vector<int>& pick, std::vector<int>& best,
-               int& nodesExplored)
-{
-    ++nodesExplored;
-
-    // Completo: todos cubiertos
-    if (coveredCnt == N) {
-        if (currCost < bestCost) {
-            bestCost = currCost;
-            best = pick;
-        }
-        return;
+    
+    // Opción 2: CON incluir el influencer (creamos una copia)
+    Solution sol_con_influencer = sol_parcial; //COPIA
+    sol_con_influencer.addInfluencer(i, costoInfluencer, segments);
+    Solution with = solve(instance, sol_con_influencer, i+1, bestSolution);
+    
+    if (with.getCost() < bestSolution.getCost()){
+        bestSolution = with;
     }
-    // Sin más influencers o ya peor que el mejor
-    if (i == M || currCost >= bestCost) return;
 
-    // Poda de factibilidad
-    if (!canStillCoverAllMissing(inst, i, N, M, covered)) return;
+    return bestSolution;
 
-    // Opción A: NO tomar i
-    bt(inst, i + 1, N, M, covered, coveredCnt, currCost, bestCost, pick, best, nodesExplored);
-
-    // Opción B: tomar i
-    const auto& segs = inst.getInfluencerSegments(i);
-    std::vector<int> touched;
-    touched.reserve(segs.size());
-    for (int s : segs) {
-        int t = normSeg(s, N);
-        if (t >= 0 && !covered[t]) {
-            covered[t] = 1; touched.push_back(t); ++coveredCnt;
-        }
-    }
-    pick.push_back(i);
-    bt(inst, i + 1, N, M, covered, coveredCnt,
-       currCost + inst.getInfluencerCost(i),
-       bestCost, pick, best, nodesExplored);
-    pick.pop_back();
-    for (int t : touched) { covered[t] = 0; --coveredCnt; }
-}
-
-Solution BacktrackingSolver::solve(const Instance& inst) {
-    const int N = inst.getNumSegments();
-    const int M = inst.getNumInfluencers();
-
-    int bestCost = std::numeric_limits<int>::max();
-    std::vector<int> best, pick;
-    std::vector<char> covered(N, 0);
-    int coveredCnt = 0;
-    nodesExplored_ = 0;
-
-    bt(inst, 0, N, M, covered, coveredCnt, 0, bestCost, pick, best, nodesExplored_);
-
-    Solution sol(M);
-    if (bestCost == std::numeric_limits<int>::max()) {
-        sol.setCost(-1);                  // INFACTIBLE → -1, no 0 ni INT_MAX
-        sol.setSelectedInfluencers({});
-    } else {
-        sol.setCost(bestCost);
-        sol.setSelectedInfluencers(best);
-    }
-    return sol;
 }

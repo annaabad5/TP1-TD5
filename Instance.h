@@ -17,6 +17,8 @@ public:
     // Constructor
     Instance();
     
+    std::pair<Instance, Instance> splitBySegmentCount(int k) const;
+
     // Cargar instancia desde archivo
     bool loadFromFile(const std::string& filename);
     
@@ -27,6 +29,9 @@ public:
     // Getters para costos y segmentos
     int getInfluencerCost(int idx) const { return influencerCosts[idx]; }
     const std::vector<int>& getInfluencerSegments(int idx) const { return influencerSegments[idx]; }
+    
+    // Setter para establecer datos
+    void setData(int N, int M, const std::vector<int>& costs, const std::vector<std::vector<int>>& segments);
     
     // Mostrar informacion de la instancia
     void printInstance() const;

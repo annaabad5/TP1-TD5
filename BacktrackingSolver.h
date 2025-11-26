@@ -4,15 +4,17 @@
 #include "Instance.h"
 #include "Solution.h"
 #include <set>
+#include <utility>
 
 class BacktrackingSolver {
 private:
-    int nodesExplored_ = 0;
+  
 
 public:
-    inline int getNodesExplored() const { return nodesExplored_; }
     BacktrackingSolver();
-    Solution solve(const Instance& inst);
+    Solution solve(const Instance& instance, Solution& sol_parcial, int i, Solution& bestSolution);
+
+    // Resuelve por micro y macro influencers según k
 };
 
 #endif // BACKTRACKING_SOLVER_H
